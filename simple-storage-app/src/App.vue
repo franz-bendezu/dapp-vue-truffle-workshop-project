@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { ethers } from 'ethers'
+import { ethers, toBigInt } from 'ethers'
 import type { Signer, AbstractProvider } from 'ethers'
 import SimpleStorage from '@/assets/SimpleStorage.json'
 
@@ -24,14 +24,18 @@ onMounted(async () => {
   await initEthConfig()
 })
 
-const contractAddress = '0x4F2Aad93c8B56BD89CBB55a88F87f377deb2ab25'
+const contractAddress = '0x7DA1657D19e6F039cF583cd71A641aD18a4564BE'
 
-const getNumber = ref('')
+const data = ref<{ owner: string; value: bigint } | null>(null)
 async function numberGet() {
   try {
     const contract = new ethers.Contract(contractAddress, SimpleStorage.abi, provider)
     const result = await contract.get()
-    getNumber.value = result.toString()
+    console.log(result)
+    data.value = {
+      owner: result.owner,
+      value: result.value
+    }
   } catch (error) {
     console.error('Error al obtener el número:', error)
   }
@@ -42,7 +46,11 @@ async function numberSet() {
   console.log(newData.value)
   try {
     const contract = new ethers.Contract(contractAddress, SimpleStorage.abi, signer)
-    const transaction = await contract.set(newData.value)
+    const address = await signer?.getAddress()
+    const transaction = await contract.set({
+      value: toBigInt(newData.value),
+      owner: address
+    })
     await transaction.wait()
     // Update state or show success message
   } catch (error) {
@@ -67,20 +75,22 @@ async function numberSet() {
       <button class="button" type="submit">Obtener</button>
       <label>
         Tu uint256:
-        <input class="input" type="text" :value="getNumber" readonly />
+        <input class="input" type="text" :value="data?.value" readonly />
+        Dueño:
+        <input class="input" type="text" :value="data?.owner" readonly />
       </label>
     </form>
 
     <h2 class="subtitle">Establecer tu uint256</h2>
-    <form class="form" @submit.prevent="numberSet" >
+    <form class="form" @submit.prevent="numberSet">
       <label>
-        Establece tu uint256: 
+        Establece tu uint256:
         <!-- {{ newData  }} -->
         <!-- 
           :value
           @input
          -->
-         <!-- 
+        <!-- 
           <input class="input" type="text" v-bind:value="newData" v-on:input="handleChange($event)" />
           <input class="input" type="text" :value="newData" @input="handleChange($event)" />
           -->
